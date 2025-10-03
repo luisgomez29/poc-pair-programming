@@ -1,1 +1,1 @@
-# poc-pair-programming
+# POC Pair Programming
