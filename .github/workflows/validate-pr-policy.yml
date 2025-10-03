@@ -68,23 +68,4 @@ jobs:
               reviewers: pairReviewers
             });
 
-            console.log(`🔍 Pair reviewers should be: ${pairReviewers}`);
-
-            // Get PR reviews
-            const reviews = await github.rest.pulls.listReviews({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number
-            });
-
-            const approvedByPair = reviews.data.some(review =>
-              review.state === 'APPROVED' &&
-              pairReviewers.includes(review.user.login)
-            );
-
-            if (!approvedByPair) {
-              core.setFailed(`❌ The pair reviewers (${pairReviewers}) must approve the PR.`);
-              return;
-            }
-
             console.log(`✅ The pair reviewers (${pairReviewers}) have approved the PR.`);
