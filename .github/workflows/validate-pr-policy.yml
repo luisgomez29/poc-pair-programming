@@ -35,6 +35,13 @@ jobs:
               repo: context.repo.repo,
               issue_number: issueNumber
             });
+            
+            const issueAssigneesCount = issue.data.assignees.length;
+            console.log(`ℹ️ Issue #${issueNumber} has ${issueAssigneesCount} assignee(s).`);
+
+            issueAssignees.forEach(assignee => {
+              console.log(`👤 Assignee: ${assignee.login}`);
+            });
 
             const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
             if (!hasPPLabel) return;
