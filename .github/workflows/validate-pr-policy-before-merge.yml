@@ -19,22 +19,6 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
 
-            # if (pr.draft) {
-            #   core.setFailed("❌ The pull request is a draft.");
-            #   return;
-            # }
-
-            # if (!pr.body) {
-            #   core.setFailed("❌ The pull request body is empty.");
-            #   return;
-            # }
-
-            # const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
-            # if (!issueMatch) {
-            #   core.setFailed("❌ The pull request does not reference any issue.");
-            #   return;
-            # }
-
             const issueNumber = issueMatch[2];
             const issue = await github.rest.issues.get({
               owner: context.repo.owner,
