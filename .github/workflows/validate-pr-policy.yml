@@ -7,7 +7,7 @@ on:
 jobs:
   validate-policy:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.state == 'open'
+    if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
