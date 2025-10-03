@@ -14,8 +14,17 @@ jobs:
       - name: Validate PR requirements
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.PULL_REQUEST_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
+
+            // Ensure PR body exists
+            if (!pr.body) {
+              core.setFailed("❌ The pull request body is empty.");
+              return;
+            }
+
+            // Extract issue number from PR body
             const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
             if (!issueMatch) {
               core.setFailed("❌ The pull request does not reference any issue.");
@@ -23,6 +32,8 @@ jobs:
             }
 
             const issueNumber = issueMatch[2];
+
+            // Get issue details
             const issue = await github.rest.issues.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -30,24 +41,50 @@ jobs:
             });
 
             const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
+            const issueAssignees = issue.data.assignees.map(a => a.login);
+            console.log(`ℹ️ Issue #${issueNumber} has ${issueAssignees.length} assignee(s).`);
+            issueAssignees.forEach(a => console.log(`👤 Assignee: ${a}`));
+
             if (!hasPPLabel) return;
 
-            if (!pr.assignees || pr.assignees.length < 2) {
-              core.setFailed("❌ Pull requests related to 'PP' issues must have at least two assignees.");
+            // Validate at least two assignees
+            if (issueAssignees.length < 2) {
+              core.setFailed("❌ The issue with 'PP' label must have at least two assignees.");
               return;
             }
 
+            // Identify the pair programmer (not the PR author)
+            const pairReviewers = issueAssignees.filter(a => a !== pr.user.login);
+            if (pairReviewers.length === 0) {
+              core.setFailed("❌ Could not identify the pair reviewer.");
+              return;
+            }
+
+            console.log(`Assigning reviewers from issue #${issueNumber}:`, pairReviewers);
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              reviewers: pairReviewers
+            });
+
+            console.log(`🔍 Pair reviewers should be: ${pairReviewers}`);
+
+            // Get PR reviews
             const reviews = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: pr.number
             });
 
-            const approvedByAssignee = reviews.data.some(review =>
+            const approvedByPair = reviews.data.some(review =>
               review.state === 'APPROVED' &&
-              pr.assignees.some(a => a.login === review.user.login)
+              pairReviewers.includes(review.user.login)
             );
 
-            if (!approvedByAssignee) {
-              core.setFailed("❌ At least one of the assignees must approve the pull request.");
+            if (!approvedByPair) {
+              core.setFailed(`❌ The pair reviewers (${pairReviewers}) must approve the PR.`);
+              return;
             }
+
+            console.log(`✅ The pair reviewers (${pairReviewers}) have approved the PR.`);
