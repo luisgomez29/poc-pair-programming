@@ -1,24 +1,24 @@
-name: Validar política de PR
+name: Validate Pull Request Policy
 
 on:
   pull_request:
     types: [opened, edited, synchronize]
 
 jobs:
-  validar-politica:
+  validate-policy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Validar PR
+      - name: Validate PR requirements
         uses: actions/github-script@v8
         with:
           script: |
             const pr = context.payload.pull_request;
-            const issueMatch = pr.body.match(/(Closes|Fixes) #?(\\d+)/i);
+            const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
             if (!issueMatch) {
-              core.setFailed("❌ El PR no cierra ningún Issue.");
+              core.setFailed("❌ The pull request does not reference any issue.");
               return;
             }
 
@@ -33,7 +33,7 @@ jobs:
             if (!hasPPLabel) return;
 
             if (!pr.assignees || pr.assignees.length < 2) {
-              core.setFailed("❌ El PR con etiqueta PP debe tener al menos dos asignatarios.");
+              core.setFailed("❌ Pull requests related to 'PP' issues must have at least two assignees.");
               return;
             }
 
@@ -49,5 +49,5 @@ jobs:
             );
 
             if (!approvedByAssignee) {
-              core.setFailed("❌ Al menos uno de los asignatarios debe aprobar el PR.");
+              core.setFailed("❌ At least one of the assignees must approve the pull request.");
             }
