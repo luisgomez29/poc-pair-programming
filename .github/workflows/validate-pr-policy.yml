@@ -54,21 +54,21 @@ jobs:
             }
 
             // Identify the pair programmer (not the PR author)
-            const pairReviewer = issueAssignees.find(a => a !== pr.user.login);
-            if (!pairReviewer) {
+            const pairReviewers = issueAssignees.filter(a => a !== pr.user.login);
+            if (pairReviewers.length === 0) {
               core.setFailed("❌ Could not identify the pair reviewer.");
               return;
             }
 
-            console.log(`Assigning reviewers from issue #${issueNumber}:`, pairReviewer);
+            console.log(`Assigning reviewers from issue #${issueNumber}:`, pairReviewers);
             await github.rest.pulls.requestReviewers({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: pr.number,
-              reviewers: [pairReviewer]
+              reviewers: pairReviewers
             });
 
-            console.log(`🔍 Pair reviewer should be: ${pairReviewer}`);
+            console.log(`🔍 Pair reviewers should be: ${pairReviewers}`);
 
             // Get PR reviews
             const reviews = await github.rest.pulls.listReviews({
@@ -79,12 +79,12 @@ jobs:
 
             const approvedByPair = reviews.data.some(review =>
               review.state === 'APPROVED' &&
-              review.user.login === pairReviewer
+              review.user.login === pairReviewers
             );
 
             if (!approvedByPair) {
-              core.setFailed(`❌ The pair reviewer (${pairReviewer}) must approve the PR.`);
+              core.setFailed(`❌ The pair reviewer (${pairReviewers}) must approve the PR.`);
               return;
             }
 
-            console.log(`✅ The pair reviewer (${pairReviewer}) has approved the PR.`);
+            console.log(`✅ The pair reviewer (${pairReviewers}) has approved the PR.`);
