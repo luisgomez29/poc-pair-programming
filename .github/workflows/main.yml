@@ -1,0 +1,53 @@
+name: Validar política de PR
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  validar-politica:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validar PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const issueMatch = pr.body.match(/(Closes|Fixes) #?(\\d+)/i);
+            if (!issueMatch) {
+              core.setFailed("❌ El PR no cierra ningún Issue.");
+              return;
+            }
+
+            const issueNumber = issueMatch[2];
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
+            if (!hasPPLabel) return;
+
+            if (!pr.assignees || pr.assignees.length < 2) {
+              core.setFailed("❌ El PR con etiqueta PP debe tener al menos dos asignatarios.");
+              return;
+            }
+
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            const approvedByAssignee = reviews.data.some(review =>
+              review.state === 'APPROVED' &&
+              pr.assignees.some(a => a.login === review.user.login)
+            );
+
+            if (!approvedByAssignee) {
+              core.setFailed("❌ Al menos uno de los asignatarios debe aprobar el PR.");
+            }
