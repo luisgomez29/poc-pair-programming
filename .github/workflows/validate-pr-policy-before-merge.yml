@@ -7,7 +7,6 @@ on:
 jobs:
   validate-approver-before-merge:
     runs-on: ubuntu-latest
-    # needs: validate-policy
     if: github.event.review.state == 'approved'
     steps:
       - name: Checkout repository
@@ -20,23 +19,21 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
 
-            // Ensure PR is not a draft
-            if (pr.draft) {
-              core.setFailed("❌ The pull request is a draft.");
-              return;
-            }
+            # if (pr.draft) {
+            #   core.setFailed("❌ The pull request is a draft.");
+            #   return;
+            # }
 
-            // Ensure PR body references an issue
-            if (!pr.body) {
-              core.setFailed("❌ The pull request body is empty.");
-              return;
-            }
+            # if (!pr.body) {
+            #   core.setFailed("❌ The pull request body is empty.");
+            #   return;
+            # }
 
-            const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
-            if (!issueMatch) {
-              core.setFailed("❌ The pull request does not reference any issue.");
-              return;
-            }
+            # const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
+            # if (!issueMatch) {
+            #   core.setFailed("❌ The pull request does not reference any issue.");
+            #   return;
+            # }
 
             const issueNumber = issueMatch[2];
             const issue = await github.rest.issues.get({
@@ -58,13 +55,6 @@ jobs:
               repo: context.repo.repo,
               pull_number: pr.number
             });
-
-            // Filter approved reviews
-            const approvedReviews = reviews.data.filter(r => r.state === 'APPROVED');
-            if (approvedReviews.length === 0) {
-              core.setFailed("❌ The pull request has not been approved.");
-              return;
-            }
 
             // Check if at least one approved reviewer is an assignee of the issue and not the PR author
             const validApprover = approvedReviews.find(r =>

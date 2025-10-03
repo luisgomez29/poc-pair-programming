@@ -31,6 +31,11 @@ jobs:
               return;
             }
 
+            if (pr.draft) {
+              core.setFailed("❌ The pull request is a draft.");
+              return;
+            }
+
             const issueNumber = issueMatch[2];
 
             // Get issue details
