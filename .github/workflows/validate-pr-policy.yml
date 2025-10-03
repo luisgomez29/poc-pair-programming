@@ -59,6 +59,14 @@ jobs:
               return;
             }
 
+            console.log(`Assigning reviewers from issue #${issueNumber}:`, pairReviewer);
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              reviewers: [pairReviewer]
+            });
+
             console.log(`🔍 Pair reviewer should be: ${pairReviewer}`);
 
             // Get PR reviews
