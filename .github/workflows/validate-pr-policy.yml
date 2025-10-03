@@ -17,7 +17,6 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
 
-            // Validar que el cuerpo del PR existe
             if (!pr.body) {
               core.setFailed("❌ The pull request body is empty.");
               return;
@@ -36,18 +35,19 @@ jobs:
               issue_number: issueNumber
             });
 
-            const issueAssignees = issue.data.assignees;
-            console.log(`ℹ️ Issue #${issueNumber} has ${issueAssignees.length} assignee(s).`);
-
-            issueAssignees.forEach(assignee => {
-              console.log(`👤 Assignee: ${assignee.login}`);
-            });
-
             const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
             if (!hasPPLabel) return;
 
-            if (!pr.assignees || pr.assignees.length < 2) {
-              core.setFailed("❌ Pull requests related to 'PP' issues must have at least two assignees.");
+            const prAssignees = pr.assignees || [];
+            if (prAssignees.length < 2) {
+              core.setFailed("❌ The PR with 'PP' label must have at least two assignees.");
+              return;
+            }
+
+            const prAuthor = pr.user.login;
+            const pairAssignees = prAssignees.filter(a => a.login !== prAuthor);
+            if (pairAssignees.length === 0) {
+              core.setFailed("❌ No pair assignee found (must be different from PR author).");
               return;
             }
 
@@ -57,11 +57,11 @@ jobs:
               pull_number: pr.number
             });
 
-            const approvedByAssignee = reviews.data.some(review =>
+            const approvedByPair = reviews.data.some(review =>
               review.state === 'APPROVED' &&
-              pr.assignees.some(a => a.login === review.user.login)
+              pairAssignees.some(a => a.login === review.user.login)
             );
 
-            if (!approvedByAssignee) {
-              core.setFailed("❌ At least one of the assignees must approve the pull request.");
+            if (!approvedByPair) {
+              core.setFailed("❌ The pair assignee must approve the PR.");
             }
