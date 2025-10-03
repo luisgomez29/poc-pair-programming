@@ -16,6 +16,13 @@ jobs:
         with:
           script: |
             const pr = context.payload.pull_request;
+
+            // Validar que el cuerpo del PR existe
+            if (!pr.body) {
+              core.setFailed("❌ The pull request body is empty.");
+              return;
+            }
+
             const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
             if (!issueMatch) {
               core.setFailed("❌ The pull request does not reference any issue.");
