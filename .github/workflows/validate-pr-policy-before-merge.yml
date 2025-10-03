@@ -51,6 +51,13 @@ jobs:
               pull_number: pr.number
             });
 
+            // Filter approved reviews
+            const approvedReviews = reviews.data.filter(r => r.state === 'APPROVED');
+            if (approvedReviews.length === 0) {
+              core.setFailed("❌ The pull request has not been approved.");
+              return;
+            }
+
             // Check if at least one approved reviewer is an assignee of the issue and not the PR author
             const validApprover = approvedReviews.find(r =>
               issueAssignees.includes(r.user.login) && r.user.login !== pr.user.login

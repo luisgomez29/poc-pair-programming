@@ -7,6 +7,7 @@ on:
 jobs:
   validate-policy:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.state == 'open'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -28,11 +29,6 @@ jobs:
             const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
             if (!issueMatch) {
               core.setFailed("❌ The pull request does not reference any issue.");
-              return;
-            }
-
-            if (pr.draft) {
-              core.setFailed("❌ The pull request is a draft.");
               return;
             }
 
@@ -78,4 +74,4 @@ jobs:
               reviewers: pairReviewers
             });
 
-            console.log(`✅ The pair reviewers (${pairReviewers}) have approved the PR.`);
+            console.log(`✅ The pair reviewers (${pairReviewers}) have to approve the PR.`);
