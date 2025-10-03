@@ -31,11 +31,6 @@ jobs:
               return;
             }
 
-            if (issue.data.state !== 'open') {
-              core.setFailed(`❌ Issue #${issueNumber} is not open.`);
-              return;
-            }
-
             if (pr.draft) {
               core.setFailed("❌ The pull request is a draft.");
               return;
@@ -49,6 +44,11 @@ jobs:
               repo: context.repo.repo,
               issue_number: issueNumber
             });
+
+            if (issue.data.state !== 'open') {
+              core.setFailed(`❌ Issue #${issueNumber} is not open.`);
+              return;
+            }
 
             const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
             const issueAssignees = issue.data.assignees.map(a => a.login);

@@ -25,17 +25,17 @@ jobs:
               return;
             }
 
-            if (issue.data.state !== 'open') {
-              core.setFailed(`❌ Issue #${issueNumber} is not open.`);
-              return;
-            }
-
             const issueNumber = issueMatch[2];
             const issue = await github.rest.issues.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issueNumber
             });
+
+            if (issue.data.state !== 'open') {
+              core.setFailed(`❌ Issue #${issueNumber} is not open.`);
+              return;
+            }
 
             const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
             if (!hasPPLabel) return;
