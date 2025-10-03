@@ -31,11 +31,6 @@ jobs:
               return;
             }
 
-            if (pr.draft) {
-              core.setFailed("❌ The pull request is a draft.");
-              return;
-            }
-
             const issueNumber = issueMatch[2];
 
             // Get issue details
@@ -47,6 +42,11 @@ jobs:
 
             if (issue.data.state !== 'open') {
               core.setFailed(`❌ Issue #${issueNumber} is not open.`);
+              return;
+            }
+
+            if (pr.draft) {
+              core.setFailed("❌ The pull request is a draft.");
               return;
             }
 
