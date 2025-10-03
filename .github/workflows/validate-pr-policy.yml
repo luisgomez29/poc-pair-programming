@@ -67,24 +67,53 @@ jobs:
               pull_number: pr.number,
               reviewers: pairReviewers
             });
-
-            console.log(`🔍 Pair reviewers should be: ${pairReviewers}`);
-
-            // Get PR reviews
-            const reviews = await github.rest.pulls.listReviews({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number
-            });
-
-            const approvedByPair = reviews.data.some(review =>
-              review.state === 'APPROVED' &&
-              pairReviewers.includes(review.user.login)
-            );
-
-            if (!approvedByPair) {
-              core.setFailed(`❌ The pair reviewers (${pairReviewers}) must approve the PR.`);
-              return;
-            }
-
+            
             console.log(`✅ The pair reviewers (${pairReviewers}) have approved the PR.`);
+
+  validate-approver-before-merge:
+      runs-on: ubuntu-latest
+      needs: validate-policy
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v5
+
+        - name: Validate PR approver is issue assignee and not PR author
+          uses: actions/github-script@v8
+          with:
+            github-token: ${{ secrets.PULL_REQUEST_TOKEN }}
+            script: |
+              const pr = context.payload.pull_request;
+              if (!pr) {
+                core.setFailed('No pull request found in context');
+                return;
+              }
+              const prAuthor = pr.user.login;
+              const prNumber = pr.number;
+              // Get linked issue (assume PR body contains "Closes #<issue_number>")
+              const issueMatch = pr.body && pr.body.match(/Closes #([0-9]+)/i);
+              if (!issueMatch) {
+                core.setFailed('No linked issue found in PR body');
+                return;
+              }
+              const issueNumber = issueMatch[1];
+              // Get issue assignees
+              const issue = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+              });
+              const issueAssignees = issue.data.assignees.map(a => a.login);
+              // Get PR reviews
+              const reviews = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+              });
+              const approvedReviewers = reviews.data.filter(r => r.state === 'APPROVED').map(r => r.user.login);
+              // Check if any approved reviewer is an issue assignee and not the PR author
+              const validApprover = approvedReviewers.find(r => issueAssignees.includes(r) && r !== prAuthor);
+              if (!validApprover) {
+                core.setFailed('No valid approver found: must be assignee of the issue and different from PR author');
+                return;
+              }
+              console.log('Validation passed: valid approver found:', validApprover);
