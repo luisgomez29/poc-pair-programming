@@ -17,11 +17,13 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
 
+            // Ensure PR body exists
             if (!pr.body) {
               core.setFailed("❌ The pull request body is empty.");
               return;
             }
 
+            // Extract issue number from PR body
             const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
             if (!issueMatch) {
               core.setFailed("❌ The pull request does not reference any issue.");
@@ -29,6 +31,8 @@ jobs:
             }
 
             const issueNumber = issueMatch[2];
+
+            // Get issue details
             const issue = await github.rest.issues.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -36,21 +40,28 @@ jobs:
             });
 
             const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
+            const issueAssignees = issue.data.assignees.map(a => a.login);
+            console.log(`ℹ️ Issue #${issueNumber} has ${issueAssignees.length} assignee(s).`);
+            issueAssignees.forEach(a => console.log(`👤 Assignee: ${a}`));
+
             if (!hasPPLabel) return;
 
-            const prAssignees = pr.assignees || [];
-            if (prAssignees.length < 2) {
-              core.setFailed("❌ The PR with 'PP' label must have at least two assignees.");
+            // Validate at least two assignees
+            if (issueAssignees.length < 2) {
+              core.setFailed("❌ The issue with 'PP' label must have at least two assignees.");
               return;
             }
 
-            const prAuthor = pr.user.login;
-            const pairAssignees = prAssignees.filter(a => a.login !== prAuthor);
-            if (pairAssignees.length === 0) {
-              core.setFailed("❌ No pair assignee found (must be different from PR author).");
+            // Identify the pair programmer (not the PR author)
+            const pairReviewer = issueAssignees.find(a => a !== pr.user.login);
+            if (!pairReviewer) {
+              core.setFailed("❌ Could not identify the pair reviewer.");
               return;
             }
 
+            console.log(`🔍 Pair reviewer should be: ${pairReviewer}`);
+
+            // Get PR reviews
             const reviews = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -59,9 +70,12 @@ jobs:
 
             const approvedByPair = reviews.data.some(review =>
               review.state === 'APPROVED' &&
-              pairAssignees.some(a => a.login === review.user.login)
+              review.user.login === pairReviewer
             );
 
             if (!approvedByPair) {
-              core.setFailed("❌ The pair assignee must approve the PR.");
+              core.setFailed(`❌ The pair reviewer (${pairReviewer}) must approve the PR.`);
+              return;
             }
+
+            console.log(`✅ The pair reviewer (${pairReviewer}) has approved the PR.`);
