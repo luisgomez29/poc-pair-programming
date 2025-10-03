@@ -2,7 +2,7 @@ name: Validate Pull Request Policy
 
 on:
   pull_request:
-    types: [opened, edited, synchronize]
+    types: [opened, edited, synchronize, ready_for_review]
 
 jobs:
   validate-policy:
@@ -44,6 +44,11 @@ jobs:
               repo: context.repo.repo,
               issue_number: issueNumber
             });
+
+            if (issue.data.state !== 'open') {
+              core.setFailed(`❌ Issue #${issueNumber} is not open.`);
+              return;
+            }
 
             const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
             const issueAssignees = issue.data.assignees.map(a => a.login);
