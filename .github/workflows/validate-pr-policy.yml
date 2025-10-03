@@ -79,12 +79,12 @@ jobs:
 
             const approvedByPair = reviews.data.some(review =>
               review.state === 'APPROVED' &&
-              review.user.login === pairReviewers
+              pairReviewers.includes(review.user.login)
             );
 
             if (!approvedByPair) {
-              core.setFailed(`❌ The pair reviewer (${pairReviewers}) must approve the PR.`);
+              core.setFailed(`❌ The pair reviewers (${pairReviewers}) must approve the PR.`);
               return;
             }
 
-            console.log(`✅ The pair reviewer (${pairReviewers}) has approved the PR.`);
+            console.log(`✅ The pair reviewers (${pairReviewers}) have approved the PR.`);
