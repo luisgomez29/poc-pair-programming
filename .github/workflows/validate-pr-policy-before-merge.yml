@@ -19,14 +19,12 @@ jobs:
           github-token: ${{ secrets.PULL_REQUEST_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
-
-            // Ensure PR is not a draft
+            
             if (pr.draft) {
               core.setFailed("❌ The pull request is a draft.");
               return;
             }
 
-            // Ensure PR body references an issue
             if (!pr.body) {
               core.setFailed("❌ The pull request body is empty.");
               return;
