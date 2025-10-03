@@ -13,8 +13,8 @@ jobs:
 
       - name: Validate PR requirements
         uses: actions/github-script@v8
-        github-token: ${{ secrets.PULL_REQUEST_TOKEN }}
         with:
+          github-token: ${{ secrets.PULL_REQUEST_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
 
