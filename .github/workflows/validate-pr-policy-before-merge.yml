@@ -1,0 +1,79 @@
+name: Validate Pull Request Policy
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+
+jobs:
+  validate-approver-before-merge:
+      runs-on: ubuntu-latest
+      needs: validate-policy
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v5
+
+        - name: Validate PR approver is issue assignee and not PR author
+          uses: actions/github-script@v8
+          with:
+            github-token: ${{ secrets.PULL_REQUEST_TOKEN }}
+            script: |
+              const pr = context.payload.pull_request;
+
+              // Ensure PR is not a draft
+              if (pr.draft) {
+                core.setFailed("❌ The pull request is a draft.");
+                return;
+              }
+
+              // Ensure PR body references an issue
+              if (!pr.body) {
+                core.setFailed("❌ The pull request body is empty.");
+                return;
+              }
+
+              const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
+              if (!issueMatch) {
+                core.setFailed("❌ The pull request does not reference any issue.");
+                return;
+              }
+
+              const issueNumber = issueMatch[2];
+              const issue = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              });
+
+              const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
+              if (!hasPPLabel) return;
+
+              const issueAssignees = issue.data.assignees.map(a => a.login);
+              console.log(`ℹ️ Issue #${issueNumber} has ${issueAssignees.length} assignee(s).`);
+              issueAssignees.forEach(a => console.log(`👤 Assignee: ${a}`));
+
+              // Get reviews on the PR
+              const reviews = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number
+              });
+
+              // Filter approved reviews
+              const approvedReviews = reviews.data.filter(r => r.state === 'APPROVED');
+              if (approvedReviews.length === 0) {
+                core.setFailed("❌ The pull request has not been approved.");
+                return;
+              }
+
+              // Check if at least one approved reviewer is an assignee of the issue and not the PR author
+              const validApprover = approvedReviews.find(r =>
+                issueAssignees.includes(r.user.login) && r.user.login !== pr.user.login
+              );
+
+              if (!validApprover) {
+                core.setFailed("❌ No valid reviewer found: must be an assignee of the issue and not the PR author.");
+                return;
+              }
+
+              console.log(`✅ Valid reviewer found: ${validApprover.user.login}`);
