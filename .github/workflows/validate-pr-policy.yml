@@ -35,9 +35,9 @@ jobs:
               repo: context.repo.repo,
               issue_number: issueNumber
             });
-            
-            const issueAssigneesCount = issue.data.assignees.length;
-            console.log(`ℹ️ Issue #${issueNumber} has ${issueAssigneesCount} assignee(s).`);
+
+            const issueAssignees = issue.data.assignees;
+            console.log(`ℹ️ Issue #${issueNumber} has ${issueAssignees.length} assignee(s).`);
 
             issueAssignees.forEach(assignee => {
               console.log(`👤 Assignee: ${assignee.login}`);
