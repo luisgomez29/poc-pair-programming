@@ -67,7 +67,7 @@ jobs:
               pull_number: pr.number,
               reviewers: pairReviewers
             });
-            
+
             console.log(`✅ The pair reviewers (${pairReviewers}) have approved the PR.`);
 
   validate-approver-before-merge:
@@ -87,6 +87,7 @@ jobs:
                 core.setFailed('No pull request found in context');
                 return;
               }
+
               const prAuthor = pr.user.login;
               const prNumber = pr.number;
               // Get linked issue (assume PR body contains "Closes #<issue_number>")
@@ -95,6 +96,7 @@ jobs:
                 core.setFailed('No linked issue found in PR body');
                 return;
               }
+              
               const issueNumber = issueMatch[1];
               // Get issue assignees
               const issue = await github.rest.issues.get({
@@ -102,13 +104,16 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: issueNumber,
               });
+
               const issueAssignees = issue.data.assignees.map(a => a.login);
+              console.log(`ℹ️ Issue #${issueNumber} has ${issueAssignees.length} assignee(s).`);
               // Get PR reviews
               const reviews = await github.rest.pulls.listReviews({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: prNumber,
               });
+
               const approvedReviewers = reviews.data.filter(r => r.state === 'APPROVED').map(r => r.user.login);
               // Check if any approved reviewer is an issue assignee and not the PR author
               const validApprover = approvedReviewers.find(r => issueAssignees.includes(r) && r !== prAuthor);
@@ -116,4 +121,4 @@ jobs:
                 core.setFailed('No valid approver found: must be assignee of the issue and different from PR author');
                 return;
               }
-              console.log('Validation passed: valid approver found:', validApprover);
+              console.log('✅ Validation passed: valid approver found:', validApprover);
