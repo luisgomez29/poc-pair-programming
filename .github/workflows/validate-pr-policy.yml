@@ -25,9 +25,9 @@ jobs:
               return;
             }
 
-            // Extract all referenced issue numbers from PR body
-            const issueMatches = pr.body.matchAll(/(Closes|Fixes) #?(\d+)/gi);
-            const issueNumbers = Array.from(issueMatches, m => m[2]);
+            // Extract all issue numbers preceded by # in PR body
+            const issueNumbers = Array.from(pr.body.matchAll(/#(\d+)/g), m => m[1]);
+
             if (!issueNumbers.length) {
               core.setFailed("❌ The pull request does not reference any issue.");
               return;
