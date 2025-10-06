@@ -36,6 +36,7 @@ jobs:
             let foundOpenPP = false;
             let selectedIssue = null;
             let issueAssignees = [];
+            console.log('Referenced issue numbers:', issueNumbers);
             for (const issueNumber of issueNumbers) {
               const issue = await github.rest.issues.get({
                 owner: context.repo.owner,
