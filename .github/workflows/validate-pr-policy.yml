@@ -25,33 +25,45 @@ jobs:
               return;
             }
 
-            // Extract issue number from PR body
-            const issueMatch = pr.body.match(/(Closes|Fixes) #?(\d+)/i);
-            if (!issueMatch) {
+            // Extract all referenced issue numbers from PR body
+            const issueMatches = pr.body.matchAll(/(Closes|Fixes) #?(\\d+)/gi);
+            const issueNumbers = Array.from(issueMatches, m => m[2]);
+            if (!issueNumbers.length) {
               core.setFailed("❌ The pull request does not reference any issue.");
               return;
             }
 
-            const issueNumber = issueMatch[2];
+            let foundOpenPP = false;
+            let selectedIssue = null;
+            let issueAssignees = [];
+            for (const issueNumber of issueNumbers) {
+              const issue = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              });
+              const isOpen = issue.data.state === 'open';
+              const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
+              if (isOpen && hasPPLabel) {
+                foundOpenPP = true;
+                selectedIssue = issue;
+                issueAssignees = issue.data.assignees.map(a => a.login);
+                console.log(`ℹ️ Issue #${issueNumber} is open and has 'PP' label.`);
+                break;
+              } else {
+                console.log(`ℹ️ Issue #${issueNumber} is${isOpen ? '' : ' not'} open and${hasPPLabel ? '' : ' does not'} have 'PP' label.`);
+              }
+            }
 
-            // Get issue details
-            const issue = await github.rest.issues.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber
-            });
+            //if (!hasPPLabel) return;
 
-            if (issue.data.state !== 'open') {
-              core.setFailed(`❌ Issue #${issueNumber} is not open.`);
+            if (!foundOpenPP) {
+              core.setFailed("❌ None of the referenced issues are open and have the 'PP' label.");
               return;
             }
 
-            const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
-            const issueAssignees = issue.data.assignees.map(a => a.login);
-            console.log(`ℹ️ Issue #${issueNumber} has ${issueAssignees.length} assignee(s).`);
+            console.log(`ℹ️ Issue has ${issueAssignees.length} assignee(s).`);
             issueAssignees.forEach(a => console.log(`👤 Assignee: ${a}`));
-
-            if (!hasPPLabel) return;
 
             // Validate at least two assignees
             if (issueAssignees.length < 2) {
@@ -66,7 +78,7 @@ jobs:
               return;
             }
 
-            console.log(`Assigning reviewers from issue #${issueNumber}:`, pairReviewers);
+            console.log(`Assigning reviewers from issue #${selectedIssue.number}:`, pairReviewers);
             await github.rest.pulls.requestReviewers({
               owner: context.repo.owner,
               repo: context.repo.repo,
