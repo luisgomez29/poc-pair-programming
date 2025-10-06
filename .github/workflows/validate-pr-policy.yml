@@ -71,7 +71,7 @@ jobs:
               return;
             }
 
-            console.log(`ℹ️ Issue #${selectedIssue.number} has ${issueAssignees.length} assignee(s).`);
+            console.log(`ℹ️ Issue #${selectedIssue.data.number} has ${issueAssignees.length} assignee(s).`);
             issueAssignees.forEach(a => console.log(`👤 Assignee: ${a}`));
 
             // Validate at least two assignees
@@ -87,7 +87,7 @@ jobs:
               return;
             }
 
-            console.log(`Assigning reviewers from issue #${selectedIssue.number}:`, pairReviewers);
+            console.log(`Assigning reviewers from issue #${selectedIssue.data.number}:`, pairReviewers);
             await github.rest.pulls.requestReviewers({
               owner: context.repo.owner,
               repo: context.repo.repo,
