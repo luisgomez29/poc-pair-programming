@@ -19,18 +19,40 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
 
-            const issueNumber = issueMatch[2];
-            const issue = await github.rest.issues.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber
-            });
+            // Extract all issue numbers preceded by # in PR body
+            const issueNumbers = Array.from(pr.body.matchAll(/#(\d+)/g), m => m[1]);
 
-            const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
-            if (!hasPPLabel) return;
+            if (!issueNumbers.length) {
+              core.setFailed("❌ The pull request does not reference any issue.");
+              return;
+            }
 
-            const issueAssignees = issue.data.assignees.map(a => a.login);
-            console.log(`ℹ️ Issue #${issueNumber} has ${issueAssignees.length} assignee(s).`);
+            let foundOpenPP = false;
+            let selectedIssue = null;
+            let issueAssignees = [];
+            for (const issueNumber of issueNumbers) {
+              const issue = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              });
+              const isOpen = issue.data.state === 'open';
+              const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
+              if (isOpen && hasPPLabel) {
+                foundOpenPP = true;
+                selectedIssue = issue;
+                issueAssignees = issue.data.assignees.map(a => a.login);
+                console.log(`ℹ️ Issue #${issueNumber} is open and has 'PP' label.`);
+                break;
+              }
+            }
+
+            if (!foundOpenPP) {
+              core.setFailed("❌ No referenced issue is open and has the 'PP' label.");
+              return;
+            }
+
+            console.log(`ℹ️ Issue #${selectedIssue.data.number} has ${issueAssignees.length} assignee(s).`);
             issueAssignees.forEach(a => console.log(`👤 Assignee: ${a}`));
 
             // Get reviews on the PR
