@@ -95,4 +95,4 @@ jobs:
               reviewers: pairReviewers
             });
 
-            console.log(`✅ The pair reviewers (${pairReviewers}) have to approve the PR.`);
+            console.log(`✅ The pair reviewers ${pairReviewers} have to approve the PR.`);
