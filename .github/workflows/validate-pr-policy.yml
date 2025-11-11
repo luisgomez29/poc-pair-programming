@@ -55,10 +55,8 @@ jobs:
               } else if (isOpen) {
                 foundOpen = true;
                 console.log(`ℹ️ Issue #${issueNumber} is open and does not have 'PP' label.`);
-                break;
               } else {
                 console.log(`ℹ️ Issue #${issueNumber} is not open.`);
-                break;
               }
             }
 
