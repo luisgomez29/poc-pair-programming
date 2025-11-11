@@ -33,6 +33,8 @@ jobs:
               return;
             }
 
+            let foundOpen = false;
+            let foundOpenPP = false;
             let selectedIssue = null;
             let issueAssignees = [];
             for (const issueNumber of issueNumbers) {
@@ -44,20 +46,29 @@ jobs:
               const isOpen = issue.data.state === 'open';
               const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
               if (isOpen && hasPPLabel) {
+                foundOpen = true;
+                foundOpenPP = true;
                 selectedIssue = issue;
                 issueAssignees = issue.data.assignees.map(a => a.login);
                 console.log(`ℹ️ Issue #${issueNumber} is open and has 'PP' label.`);
                 break;
               } else if (isOpen) {
+                foundOpen = true;
                 console.log(`ℹ️ Issue #${issueNumber} is open and does not have 'PP' label.`);
-                return;
+                break;
               } else {
                 console.log(`ℹ️ Issue #${issueNumber} is not open.`);
+                break;
               }
             }
 
-            if (!isOpen) {
+            if (!foundOpen) {
               core.setFailed("❌ None of the referenced issues are open.");
+              return;
+            }
+
+            if (!foundOpenPP) {
+              console.log("✅ At least one referenced issue is open and does not have 'PP' label.");
               return;
             }
 
