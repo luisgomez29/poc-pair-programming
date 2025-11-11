@@ -19,6 +19,12 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
 
+            // Ensure PR body exists
+            if (!pr.body) {
+              core.setFailed("❌ The pull request body is empty.");
+              return;
+            }
+
             // Extract all issue numbers preceded by # in PR body
             const issueNumbers = Array.from(pr.body.matchAll(/#(\d+)/g), m => m[1]);
 
@@ -27,6 +33,7 @@ jobs:
               return;
             }
 
+            let foundOpen = false;
             let foundOpenPP = false;
             let selectedIssue = null;
             let issueAssignees = [];
@@ -39,16 +46,36 @@ jobs:
               const isOpen = issue.data.state === 'open';
               const hasPPLabel = issue.data.labels.some(label => label.name === 'PP');
               if (isOpen && hasPPLabel) {
+                foundOpen = true;
                 foundOpenPP = true;
                 selectedIssue = issue;
                 issueAssignees = issue.data.assignees.map(a => a.login);
                 console.log(`ℹ️ Issue #${issueNumber} is open and has 'PP' label.`);
                 break;
+              } else if (isOpen) {
+                foundOpen = true;
+                console.log(`ℹ️ Issue #${issueNumber} is open and does not have 'PP' label.`);
+              } else {
+                console.log(`ℹ️ Issue #${issueNumber} is not open.`);
               }
             }
 
+            if (!foundOpen) {
+              core.setFailed("❌ None of the referenced issues are open.");
+              return;
+            }
+
             if (!foundOpenPP) {
-              core.setFailed("❌ No referenced issue is open and has the 'PP' label.");
+              console.log("✅ At least one referenced issue is open and does not have 'PP' label.");
+              return;
+            }
+
+            console.log(`ℹ️ Issue #${selectedIssue.data.number} has ${issueAssignees.length} assignee(s).`);
+            issueAssignees.forEach(a => console.log(`👤 Assignee: ${a}`));
+
+            // Validate at least two assignees
+            if (issueAssignees.length < 2) {
+              core.setFailed("❌ The issue with 'PP' label must have at least two assignees.");
               return;
             }
 
